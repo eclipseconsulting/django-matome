@@ -162,8 +162,8 @@ class CodeStats(object):
 
     @staticmethod
     def _line(name, statistics):
-        m_over_c = (statistics.methods / statistics.classes) if statistics.classes != 0 else 0
-        loc_over_m = (statistics.code_lines / statistics.methods) - 2 if statistics.classes != 0 else 0
+        m_over_c = (float(statistics.methods) / statistics.classes) if statistics.classes != 0 else 0.0
+        loc_over_m = (float(statistics.code_lines) / statistics.methods) - 2 if statistics.methods != 0 else 0.0
 
         line_format = "".join([
             "| {name} ",
