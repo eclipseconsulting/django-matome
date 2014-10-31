@@ -4,9 +4,41 @@ import os
 import re
 
 
-class CodeStatisticsCalculator(object):
+class CodeStats(object):
 
-    PATTERNS = {
+    def __init__(self, name):
+        self.name = name
+        self.files = 1
+        self.lines = 0
+        self.code_lines = 0
+        self.classes = 0
+        self.methods = 0
+
+
+class CategoryStats(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.files = 0
+        self.lines = 0
+        self.code_lines = 0
+        self.classes = 0
+        self.methods = 0
+
+    def add(self, stats):
+        if isinstance(stats, (CodeStats, CategoryStats)):
+            self.lines += stats.lines
+            self.code_lines += stats.code_lines
+            self.classes += stats.classes
+            self.methods += stats.methods
+            self.files += stats.files
+        else:
+            AttributeError('argument must be an instance of CodeStats')
+
+
+class SourceCodeInspector(object):
+
+    REGEXES = {
         'py': {
             'line_comment': re.compile('^\s*#'),
             'class': re.compile('\s*class\s+[_A-Z]'),
@@ -27,163 +59,113 @@ class CodeStatisticsCalculator(object):
         }
     }
 
-    def __init__(self, lines=0, code_lines=0, classes=0, methods=0):
-        self.lines = lines
-        self.code_lines = code_lines
-        self.classes = classes
-        self.methods = methods
+    def __init__(self, file_path):
+        self.file_path = file_path
 
-    def add(self, code_statistics_calculator):
-        self.lines += code_statistics_calculator.lines
-        self.code_lines += code_statistics_calculator.code_lines
-        self.classes += code_statistics_calculator.classes
-        self.methods += code_statistics_calculator.methods
-
-    def add_by_file_path(self, file_path):
-        with open(file_path) as f:
-            self.add_by_io(f, CodeStatisticsCalculator._file_type(file_path))
-
-    def add_by_io(self, io, file_type):
-        if file_type in CodeStatisticsCalculator.PATTERNS:
-            patterns = CodeStatisticsCalculator.PATTERNS[file_type]
-        else:
-            patterns = {}
-
-        comment_started = False
-
+    def inspect(self):
+        stats = CodeStats(self.file_path)
+        regexes = SourceCodeInspector.REGEXES
+        file_type = re.sub(re.compile("\A\."), '', os.path.splitext(self.file_path)[-1]).lower()
         empty_line_pattern = re.compile('^\s*$')
-
-        for line in io.readlines():
-            self.lines += 1
-            if comment_started:
-                if 'end_block_comment' in patterns and patterns['end_block_comment'].match(line):
-                    comment_started = False
-                continue
+        with open(self.file_path) as f:
+            if file_type in regexes:
+                patterns = regexes[file_type]
             else:
-                if 'begin_block_comment' in patterns and patterns['begin_block_comment'].match(line):
-                    comment_started = True
+                patterns = {}
+
+            comment_started = False
+            for line in f.readlines():
+                stats.lines += 1
+                if comment_started:
+                    if 'end_block_comment' in patterns and patterns['end_block_comment'].match(line):
+                        comment_started = False
                     continue
+                else:
+                    if 'begin_block_comment' in patterns and patterns['begin_block_comment'].match(line):
+                        comment_started = True
+                        continue
 
-            if 'class' in patterns and patterns['class'].match(line):
-                self.classes += 1
+                if 'class' in patterns and patterns['class'].match(line):
+                    stats.classes += 1
 
-            if 'method' in patterns and patterns['method'].match(line):
-                self.methods += 1
+                if 'method' in patterns and patterns['method'].match(line):
+                    stats.methods += 1
 
-            if not empty_line_pattern.match(line) and 'line_comment' not in patterns or not patterns['line_comment'].match(line):
-                """空行でなく、言語的にラインコメントが定義されていないか、ラインコメント形式でない。"""
-                self.code_lines += 1
+                if not empty_line_pattern.match(line) and 'line_comment' not in patterns or not patterns['line_comment'].match(line):
+                    stats.code_lines += 1
+        return stats
+
+
+class Summarizer(object):
 
     @staticmethod
-    def _file_type(file_path):
-        return re.sub(re.compile("\A\."), '', os.path.splitext(file_path)[-1]).lower()
+    def summarize(category_name, file_paths, regex=re.compile('.*\.(py|js|coffee)$')):
+        category_stats = CategoryStats(category_name)
+        for path in file_paths:
+            if regex.match(path):
+                stats = SourceCodeInspector(path).inspect()
+                category_stats.add(stats)
+
+        return category_stats
 
 
-class CodeStats(object):
-    TEST_TYPES = ['Controller tests',
-                  'Helper tests',
-                  'Model tests',
-                  'Mailer tests',
-                  'Integration tests',
-                  'Functional tests (old)',
-                  'Unit tests (old)']
+class SummaryPresenter(object):
 
-    def __init__(self, pairs):
-        self.pairs = pairs
-        self.statistics = self._calculate_statistics()
-        if len(self.pairs) > 1:
-            self.total = self._calculate_total()
-        else:
-            self.total = 0
-        self._print_stack = []
+    HEADER =   "| Name                 |  FILES  |  Lines  |   LOC   | Classes | Methods |   M/C   |  LOC/M  |"
+
+    SPLITTER = "+----------------------+---------+---------+---------+---------+---------+---------+---------+"
+
+
+    @staticmethod
+    def summarize(targets):
+        if not isinstance(targets, dict):
+            raise AttributeError('target must be an instance of dict')
+        represents = []
+        represents.append(SummaryPresenter.SPLITTER)
+        represents.append(SummaryPresenter.HEADER)
+        represents.append(SummaryPresenter.SPLITTER)
+        total_stats = CategoryStats('Total')
+        for category_name in targets:
+            category_files = targets[category_name]
+            category_stats = Summarizer.summarize(category_name, category_files)
+            stats_line = StatsPresenter(category_stats).represent
+            represents.append(stats_line)
+            total_stats.add(category_stats)
+        represents.append(SummaryPresenter.SPLITTER)
+        total_stats_line = StatsPresenter(total_stats).represent
+        represents.append(total_stats_line)
+        represents.append(SummaryPresenter.SPLITTER)
+        return "\n".join(represents)
+
+
+class StatsPresenter(object):
+
+    def __init__(self, stats):
+        self.stats = stats
 
     @property
-    def result(self):
-        represents = []
-        represents.append(CodeStats._splitter())
-        represents.append(CodeStats._header())
-        represents.append(CodeStats._splitter())
-        for pair in self.pairs:
-            represents.append(CodeStats._line(pair[0], self.statistics[pair[0]]))
-        represents.append(CodeStats._splitter())
-
-        if self.total:
-            represents.append(CodeStats._line("Total", self.total))
-            represents.append(CodeStats._splitter())
-
-        represents.append(self._code_test_stats())
-
-        return '\n'.join(represents)
-
-    def _calculate_statistics(self):
-        return {
-            pair[0]: self._calculate_category_statistics(pair[-1]) for pair in self.pairs
-        }
-
-    def _calculate_category_statistics(self, targets, regex=re.compile('.*\.(py|js|coffee)$')):
-        stats = CodeStatisticsCalculator()
-
-        for path in targets:
-            if regex.match(path):
-                stats.add_by_file_path(path)
-
-        return stats
-
-    def _calculate_total(self):
-        stats = CodeStatisticsCalculator()
-        for pair in self.pairs:
-            stats.add(pair[-1])
-        return stats
-
-    def _calculate_code(self):
-        code_loc = 0
-        for stats_key in self.statistics:
-            if stats_key not in CodeStats.TEST_TYPES:
-                code_loc += self.statistics[stats_key].code_lines
-        return code_loc
-
-    def _calculate_tests(self):
-        code_loc = 0
-        for stats_key in self.statistics:
-            if stats_key in CodeStats.TEST_TYPES:
-                code_loc += self.statistics[stats_key].code_lines
-        return code_loc
-
-    @staticmethod
-    def _header():
-        return "| Name                 | Lines |   LOC | Classes | Methods | M/C | LOC/M |"
-
-    @staticmethod
-    def _splitter():
-        return "+----------------------+-------+-------+---------+---------+-----+-------+"
-
-    @staticmethod
-    def _line(name, statistics):
-        m_over_c = (float(statistics.methods) / statistics.classes) if statistics.classes != 0 else 0.0
-        loc_over_m = (float(statistics.code_lines) / statistics.methods) - 2 if statistics.methods != 0 else 0.0
+    def represent(self):
+        m_over_c = (float(self.stats.methods) / self.stats.classes) if self.stats.classes != 0 else 0.0
+        loc_over_m = (float(self.stats.code_lines) / self.stats.methods) - 2 if self.stats.methods != 0 else 0.0
 
         line_format = "".join([
             "| {name:20} ",
-            "| {lines:5} ",
-            "| {code_lines:5} ",
+            "| {files:7} ",
+            "| {lines:7} ",
+            "| {code_lines:7} ",
             "| {classes:7} ",
             "| {methods:7} ",
-            "| {m_over_c:3.1f} ",
-            "| {loc_over_m:5.1f} |"
+            "| {m_over_c:7.1f} ",
+            "| {loc_over_m:7.1f} |"
         ])
 
         return line_format.format(
-            name=name,
-            lines=statistics.lines,
-            code_lines=statistics.code_lines,
-            classes=statistics.classes,
-            methods=statistics.methods,
+            name=self.stats.name,
+            files=self.stats.files,
+            lines=self.stats.lines,
+            code_lines=self.stats.code_lines,
+            classes=self.stats.classes,
+            methods=self.stats.methods,
             m_over_c=m_over_c,
             loc_over_m=loc_over_m
         )
-
-    def _code_test_stats(self):
-        code = self._calculate_code()
-        tests = self._calculate_tests()
-        result_format = "  Code LOC: {code}     Test LOC: {tests}     Code to Test Ratio: 1:{:.1f}"
-        return result_format.format(tests / code, code = code, tests = tests)
