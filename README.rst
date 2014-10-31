@@ -7,7 +7,7 @@ your django project. Reporting Ruby on Rails' rake stats like stats.
 Feature
 ~~~~~~~
 
-.. code:: bash
+::
 
     python manage.py matome
 
