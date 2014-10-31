@@ -8,7 +8,6 @@ classifiers = [
     "Programming Language :: Python",
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 2.6',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3.2',
     'Programming Language :: Python :: 3.3',
@@ -16,6 +15,11 @@ classifiers = [
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Framework :: Django'
 ]
+
+description = "".join((
+    "Django commands for reporting code statistics (Classes, KLOCs, etc) from your django project.",
+    "Reporting Ruby on Rails' rake stats like stats."
+))
 
 setup(
     author='Keita Oouchi',
@@ -26,7 +30,7 @@ setup(
     packages=['matome', 'matome.management', 'matome.management.commands'],
     license='BSD License',
     classifiers=classifiers,
-    description='Report code statistics (KLOCs, etc) from the django project.',
+    description=description,
     install_requires=[
         'Django>=1.4',
     ],
