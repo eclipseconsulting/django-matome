@@ -88,7 +88,7 @@ class CodeStats(object):
                   'Functional tests (old)',
                   'Unit tests (old)']
 
-    def __init__(self, *pairs):
+    def __init__(self, pairs):
         self.pairs = pairs
         self.statistics = self._calculate_statistics()
         if len(self.pairs) > 1:
@@ -97,7 +97,8 @@ class CodeStats(object):
             self.total = 0
         self._print_stack = []
 
-    def __str__(self):
+    @property
+    def result(self):
         represents = []
         represents.append(CodeStats._splitter())
         represents.append(CodeStats._header())
@@ -116,19 +117,15 @@ class CodeStats(object):
 
     def _calculate_statistics(self):
         return {
-            pair[0]: self._calculate_directory_statistics(pair[-1]) for pair in self.pairs
+            pair[0]: self._calculate_category_statistics(pair[-1]) for pair in self.pairs
         }
 
-    def _calculate_directory_statistics(self, directory, regex=re.compile('.*\.(py|js|coffee)$')):
+    def _calculate_category_statistics(self, targets, regex=re.compile('.*\.(py|js|coffee)$')):
         stats = CodeStatisticsCalculator()
 
-        for dname, subdirs, fnames in os.walk(directory):
-            for fname in fnames:
-                path = os.path.join(dname, fname)
-                if os.path.isdir(path) and fname.startswith('.'):
-                    stats.add(self._calculate_directory_statistics(path, regex))
-                if regex.match(fname):
-                    stats.add_by_file_path(path)
+        for path in targets:
+            if regex.match(path):
+                stats.add_by_file_path(path)
 
         return stats
 
@@ -166,23 +163,23 @@ class CodeStats(object):
         loc_over_m = (float(statistics.code_lines) / statistics.methods) - 2 if statistics.methods != 0 else 0.0
 
         line_format = "".join([
-            "| {name} ",
-            "| {lines} ",
-            "| {code_lines} ",
-            "| {classes} ",
-            "| {methods} ",
-            "| {m_over_c} ",
-            "| {loc_over_m} |"
+            "| {name:20} ",
+            "| {lines:5} ",
+            "| {code_lines:5} ",
+            "| {classes:7} ",
+            "| {methods:7} ",
+            "| {m_over_c:3.1f} ",
+            "| {loc_over_m:5.1f} |"
         ])
 
         return line_format.format(
-            name=name.ljust(20),
-            lines=str(statistics.lines).rjust(5),
-            code_lines=str(statistics.code_lines).rjust(5),
-            classes=str(statistics.classes).rjust(7),
-            methods=str(statistics.methods).rjust(7),
-            m_over_c=str(m_over_c).rjust(3),
-            loc_over_m=str(loc_over_m).rjust(5)
+            name=name,
+            lines=statistics.lines,
+            code_lines=statistics.code_lines,
+            classes=statistics.classes,
+            methods=statistics.methods,
+            m_over_c=m_over_c,
+            loc_over_m=loc_over_m
         )
 
     def _code_test_stats(self):
