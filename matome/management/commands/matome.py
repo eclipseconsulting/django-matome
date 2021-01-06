@@ -18,12 +18,19 @@ class Command(BaseCommand):
 
     def sniff(self):
         targets = OrderedDict()
-        targets['View'] = []
-        targets['Model'] = []
-        targets['Route'] = []
+        targets['Models'] = []
+        targets['Views'] = []
+        targets['Filters'] = []
+        targets['Forms'] = []
+        targets['Routes'] = []
+        targets['Helpers'] = []
+        targets['Signals'] = []
+        targets['Management Commands'] = []
+        targets['Tests'] = []
         targets['Other Modules'] = []
-        targets['JS'] = []
-        targets['Coffee'] = []
+        targets['HTML Templates'] = []
+
+
         for dname, subdirs, fnames in os.walk('.'):
             for fname in fnames:
                 path = os.path.join(dname, fname)
@@ -40,16 +47,26 @@ class Command(BaseCommand):
         if ignored_directory in fname:
             return ''
         if fname.endswith('views.py'):
-            return 'View'
+            return 'Views'
         elif fname.endswith('models.py'):
-            return 'Model'
+            return 'Models'
         elif fname.endswith('urls.py'):
-            return 'Route'
+            return 'Routes'
+        if fname.endswith('forms.py'):
+            return 'Forms'
+        if fname.endswith('filters.py'):
+            return 'Filters'
+        if fname.endswith('helpers.py'):
+            return 'Helpers'
+        if fname.endswith('signals.py'):
+            return 'Signals'
+        if 'test' in fname:
+            return 'Test'
+        if 'management' in fname and 'commands' in fname:
+            return 'Management Commands'
+        if fname.endswith('.html'):
+            return 'HTML Templates'
         elif fname.endswith('.py'):
             return 'Other Modules'
-        elif fname.endswith('.js'):
-            return 'JS'
-        elif fname.endswith('.coffee'):
-            return 'Coffee'
         else:
             return ''

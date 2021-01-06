@@ -1,0 +1,13 @@
+MANIFEST.in
+README.rst
+setup.cfg
+setup.py
+django_matome.egg-info/PKG-INFO
+django_matome.egg-info/SOURCES.txt
+django_matome.egg-info/dependency_links.txt
+django_matome.egg-info/top_level.txt
+matome/__init__.py
+matome/management/__init__.py
+matome/management/commands/__init__.py
+matome/management/commands/_code_stats.py
+matome/management/commands/matome.py

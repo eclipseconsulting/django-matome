@@ -4,12 +4,16 @@ About this module
 Django commands for reporting code statistics (Classes, KLOCs, etc) from
 your django project. Reporting Ruby on Rails' rake stats like stats.
 
-Feature
-~~~~~~~
+
+Quick start
+-----------
+
+1. Add "matome" to your INSTALLED_APPS setting
+
 
 ::
 
-    python manage.py matome
+    2. Run ``python manage.py matome`` to see stats.
 
 this command report something like this.
 
@@ -28,7 +32,5 @@ this command report something like this.
     | Total                |       6 |     120 |     104 |       1 |       0 |     0.0 |     0.0 |
     +----------------------+---------+---------+---------+---------+---------+---------+---------+
 
-TODO
-~~~~
 
-Many things.
+
